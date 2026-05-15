@@ -14,7 +14,9 @@ import { command as lock } from "./commands/moderation/lock.js";
 import { command as unlock } from "./commands/moderation/unlock.js";
 import { command as announce } from "./commands/moderation/announce.js";
 import { command as joinnumber } from "./commands/moderation/joinnumber.js";
+import { command as reactionrole } from "./commands/moderation/reactionrole.js";
 import { assignJoinRole, getNextJoinNumber } from "./lib/joinRoles.js";
+import { getEntry } from "./lib/reactionRoles.js";
 import { command as ping } from "./commands/prefix/ping.js";
 import { command as help } from "./commands/prefix/help.js";
 import { registerPrefixCommand, handlePrefixMessage } from "./lib/prefixHandler.js";
@@ -33,12 +35,13 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions,
   ],
 }) as Client & { commands: Collection<string, Command> };
 
 client.commands = new Collection<string, Command>();
 
-const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp, lock, unlock, announce, joinnumber];
+const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp, lock, unlock, announce, joinnumber, reactionrole];
 for (const cmd of commands) {
   client.commands.set(cmd.data.name, cmd);
 }
@@ -185,6 +188,54 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.reply(message).catch(() => null);
     }
   }
+});
+
+client.on(Events.MessageReactionAdd, async (reaction, user) => {
+  if (user.bot) return;
+  if (reaction.partial) await reaction.fetch().catch(() => null);
+
+  const entry = getEntry(reaction.message.id);
+  if (!entry) return;
+
+  const emoji = reaction.emoji.id
+    ? `<:${reaction.emoji.name}:${reaction.emoji.id}>`
+    : (reaction.emoji.name ?? "");
+
+  const pair = entry.pairs.find((p) => p.emoji === emoji || p.emoji === reaction.emoji.name);
+  if (!pair) return;
+
+  const guild = reaction.message.guild;
+  const member = await guild?.members.fetch(user.id).catch(() => null);
+  if (!member) return;
+
+  await member.roles.add(pair.roleId).catch((err) =>
+    logger.error(`Failed to add reaction role to ${user.tag}:`, err)
+  );
+  logger.info(`Gave role ${pair.roleId} to ${user.tag} via reaction`);
+});
+
+client.on(Events.MessageReactionRemove, async (reaction, user) => {
+  if (user.bot) return;
+  if (reaction.partial) await reaction.fetch().catch(() => null);
+
+  const entry = getEntry(reaction.message.id);
+  if (!entry) return;
+
+  const emoji = reaction.emoji.id
+    ? `<:${reaction.emoji.name}:${reaction.emoji.id}>`
+    : (reaction.emoji.name ?? "");
+
+  const pair = entry.pairs.find((p) => p.emoji === emoji || p.emoji === reaction.emoji.name);
+  if (!pair) return;
+
+  const guild = reaction.message.guild;
+  const member = await guild?.members.fetch(user.id).catch(() => null);
+  if (!member) return;
+
+  await member.roles.remove(pair.roleId).catch((err) =>
+    logger.error(`Failed to remove reaction role from ${user.tag}:`, err)
+  );
+  logger.info(`Removed role ${pair.roleId} from ${user.tag} via reaction`);
 });
 
 client.on(Events.GuildMemberAdd, async (member) => {
