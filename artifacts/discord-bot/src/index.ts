@@ -7,6 +7,7 @@ import { command as warn } from "./commands/moderation/warn.js";
 import { command as clear } from "./commands/moderation/clear.js";
 import { command as userinfo } from "./commands/moderation/userinfo.js";
 import { command as mcstatus } from "./commands/minecraft/mcstatus.js";
+import { command as unban } from "./commands/moderation/unban.js";
 import { command as ping } from "./commands/prefix/ping.js";
 import { command as help } from "./commands/prefix/help.js";
 import { registerPrefixCommand, handlePrefixMessage } from "./lib/prefixHandler.js";
@@ -30,7 +31,7 @@ const client = new Client({
 
 client.commands = new Collection<string, Command>();
 
-const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus];
+const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban];
 for (const cmd of commands) {
   client.commands.set(cmd.data.name, cmd);
 }
