@@ -42,12 +42,17 @@ const MC_HOST = "TeammatesLongLast.aternos.me";
 const MC_PORT = 58338;
 const STATUS_CHANNEL_ID = "1504826233085628497";
 
-async function getLiveStatus(): Promise<string> {
+interface StatusResult {
+  text: string;
+  online: boolean;
+}
+
+async function getLiveStatus(): Promise<StatusResult> {
   try {
     const res = await mcStatus(MC_HOST, MC_PORT, { timeout: 5000 });
-    return `🟢 **Online** | ${res.players.online}/${res.players.max} players`;
+    return { text: `🟢 **Online** | ${res.players.online}/${res.players.max} players`, online: true };
   } catch {
-    return "🔴 **Offline**";
+    return { text: "🔴 **Offline**", online: false };
   }
 }
 
@@ -65,16 +70,29 @@ client.once(Events.ClientReady, async (readyClient) => {
   const buildMessage = (statusText: string) =>
     `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n${statusText}\n-# Last updated: <t:${Math.floor(Date.now() / 1000)}:R>`;
 
-  const initialStatus = await getLiveStatus();
+  const initial = await getLiveStatus();
+  let wasOnline = initial.online;
+
   const statusMessage = await channel.send({
-    content: `@here\n\n${buildMessage(initialStatus)}`,
+    content: `@here\n\n${buildMessage(initial.text)}`,
     allowedMentions: { parse: ["everyone"] },
   });
   logger.info(`Live MC status message posted in #${channel.name}`);
 
   setInterval(async () => {
-    const statusText = await getLiveStatus();
-    await statusMessage.edit(buildMessage(statusText))
+    const result = await getLiveStatus();
+
+    if (result.online && !wasOnline) {
+      logger.info("MC server came back online — sending alert");
+      await channel.send({
+        content: `@here\n\n🟢 **The Minecraft server is back online!**\n\`${MC_HOST}:${MC_PORT}\``,
+        allowedMentions: { parse: ["everyone"] },
+      }).catch((err) => logger.error("Failed to send back-online alert:", err));
+    }
+
+    wasOnline = result.online;
+
+    await statusMessage.edit(buildMessage(result.text))
       .catch((err) => logger.error("Failed to update status message:", err));
   }, 10000);
 });
