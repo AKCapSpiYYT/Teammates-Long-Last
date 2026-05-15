@@ -73,7 +73,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   const initial = await getLiveStatus();
   let wasOnline = initial.online;
 
-  const statusMessage = await channel.send({
+  let statusMessage = await channel.send({
     content: `@here\n\n${buildMessage(initial.text)}`,
     allowedMentions: { parse: ["everyone"] },
   });
@@ -92,8 +92,9 @@ client.once(Events.ClientReady, async (readyClient) => {
 
     wasOnline = result.online;
 
-    await statusMessage.edit(buildMessage(result.text))
-      .catch((err) => logger.error("Failed to update status message:", err));
+    await statusMessage.delete().catch((err) => logger.error("Failed to delete old status message:", err));
+    statusMessage = await channel.send(buildMessage(result.text))
+      .catch((err) => { logger.error("Failed to send new status message:", err); return statusMessage; });
   }, 10000);
 });
 
