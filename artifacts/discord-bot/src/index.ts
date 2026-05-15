@@ -6,6 +6,9 @@ import { command as warn } from "./commands/moderation/warn.js";
 import { command as clear } from "./commands/moderation/clear.js";
 import { command as userinfo } from "./commands/moderation/userinfo.js";
 import { command as mcstatus } from "./commands/minecraft/mcstatus.js";
+import { command as ping } from "./commands/prefix/ping.js";
+import { command as help } from "./commands/prefix/help.js";
+import { registerPrefixCommand, handlePrefixMessage } from "./lib/prefixHandler.js";
 import { logger } from "./lib/logger.js";
 import type { Command } from "./lib/types.js";
 
@@ -30,6 +33,9 @@ const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus
 for (const cmd of commands) {
   client.commands.set(cmd.data.name, cmd);
 }
+
+registerPrefixCommand(ping);
+registerPrefixCommand(help);
 
 client.once(Events.ClientReady, (readyClient) => {
   logger.info(`Logged in as ${readyClient.user.tag}`);
@@ -60,12 +66,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-client.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot) return;
-
-  if (message.content === "!ping") {
-    message.reply("pong 🏓");
-  }
-});
+client.on(Events.MessageCreate, handlePrefixMessage);
 
 client.login(token);
