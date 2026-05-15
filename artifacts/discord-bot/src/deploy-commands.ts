@@ -7,6 +7,8 @@ import { command as clear } from "./commands/moderation/clear.js";
 import { command as userinfo } from "./commands/moderation/userinfo.js";
 import { command as mcstatus } from "./commands/minecraft/mcstatus.js";
 import { command as unban } from "./commands/moderation/unban.js";
+import { command as slowmode } from "./commands/moderation/slowmode.js";
+import { command as adminhelp } from "./commands/moderation/adminhelp.js";
 import { logger } from "./lib/logger.js";
 import type { Command } from "./lib/types.js";
 
@@ -18,7 +20,7 @@ if (!token || !clientId) {
   process.exit(1);
 }
 
-const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban];
+const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp];
 const commandData = commands.map((c) => c.data.toJSON());
 
 const rest = new REST().setToken(token);
