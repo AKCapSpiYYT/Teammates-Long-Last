@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, Events, TextChannel } from "discord.js";
+import { Client, GatewayIntentBits, Collection, Events, TextChannel, EmbedBuilder } from "discord.js";
 import { status as mcStatus } from "minecraft-server-util";
 import { command as ban } from "./commands/moderation/ban.js";
 import { command as kick } from "./commands/moderation/kick.js";
@@ -75,26 +75,54 @@ client.once(Events.ClientReady, async (readyClient) => {
     return;
   }
 
-  const buildMessage = (result: StatusResult): string => {
+  const playerFaceUrl = (username: string) =>
+    `https://mc-heads.net/avatar/${encodeURIComponent(username)}/64`;
+
+  const buildEmbeds = (result: StatusResult): EmbedBuilder[] => {
     const timestamp = Math.floor(Date.now() / 1000);
+
     if (!result.online) {
-      return `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n🔴 **Offline**\n-# Last updated: <t:${timestamp}:R>`;
+      const embed = new EmbedBuilder()
+        .setColor(0xe74c3c)
+        .setTitle("🔴 Server Offline")
+        .setDescription(`\`${MC_HOST}:${MC_PORT}\``)
+        .setFooter({ text: `Last updated` })
+        .setTimestamp();
+      return [embed];
     }
-    const playerLine = `🟢 **Online** | ${result.playerCount}/${result.maxPlayers} players`;
-    const playerList =
-      result.playerNames && result.playerNames.length > 0
-        ? `\n👥 **Playing now:** ${result.playerNames.map((n) => `\`${n}\``).join(", ")}`
-        : result.playerCount! > 0
-        ? `\n👥 **Players online** *(names hidden by server)*`
-        : "";
-    return `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n${playerLine}${playerList}\n-# Last updated: <t:${timestamp}:R>`;
+
+    const hasPlayers = result.playerNames && result.playerNames.length > 0;
+    const statusEmbed = new EmbedBuilder()
+      .setColor(0x2ecc71)
+      .setTitle("🟢 Server Online")
+      .setDescription(`\`${MC_HOST}:${MC_PORT}\``)
+      .addFields({ name: "Players", value: `${result.playerCount}/${result.maxPlayers}`, inline: true })
+      .setFooter({ text: "Last updated" })
+      .setTimestamp();
+
+    if (!hasPlayers && result.playerCount! > 0) {
+      statusEmbed.addFields({ name: "👥 Online", value: "*(names hidden by server)*", inline: true });
+      return [statusEmbed];
+    }
+
+    if (!hasPlayers) return [statusEmbed];
+
+    const playerEmbeds = result.playerNames!.slice(0, 9).map((name) =>
+      new EmbedBuilder()
+        .setColor(0x57f287)
+        .setAuthor({ name, iconURL: playerFaceUrl(name) })
+        .setThumbnail(playerFaceUrl(name))
+    );
+
+    return [statusEmbed, ...playerEmbeds];
   };
 
   const initial = await getLiveStatus();
   let wasOnline = initial.online;
 
   let statusMessage = await channel.send({
-    content: `@here\n\n${buildMessage(initial)}`,
+    content: `@here`,
+    embeds: buildEmbeds(initial),
     allowedMentions: { parse: ["everyone"] },
   });
   logger.info(`Live MC status message posted in #${channel.name}`);
@@ -113,7 +141,7 @@ client.once(Events.ClientReady, async (readyClient) => {
     wasOnline = result.online;
 
     await statusMessage.delete().catch((err) => logger.error("Failed to delete old status message:", err));
-    statusMessage = await channel.send(buildMessage(result))
+    statusMessage = await channel.send({ embeds: buildEmbeds(result) })
       .catch((err) => { logger.error("Failed to send new status message:", err); return statusMessage; });
   }, 10000);
 });
