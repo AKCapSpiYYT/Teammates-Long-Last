@@ -15,6 +15,7 @@ import { command as unlock } from "./commands/moderation/unlock.js";
 import { command as announce } from "./commands/moderation/announce.js";
 import { command as joinnumber } from "./commands/moderation/joinnumber.js";
 import { command as reactionrole } from "./commands/moderation/reactionrole.js";
+import { command as poll } from "./commands/moderation/poll.js";
 import { assignJoinRole, getNextJoinNumber } from "./lib/joinRoles.js";
 import { getEntry } from "./lib/reactionRoles.js";
 import { command as ping } from "./commands/prefix/ping.js";
@@ -41,7 +42,7 @@ const client = new Client({
 
 client.commands = new Collection<string, Command>();
 
-const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp, lock, unlock, announce, joinnumber, reactionrole];
+const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp, lock, unlock, announce, joinnumber, reactionrole, poll];
 for (const cmd of commands) {
   client.commands.set(cmd.data.name, cmd);
 }

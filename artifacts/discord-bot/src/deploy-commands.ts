@@ -14,6 +14,7 @@ import { command as unlock } from "./commands/moderation/unlock.js";
 import { command as announce } from "./commands/moderation/announce.js";
 import { command as joinnumber } from "./commands/moderation/joinnumber.js";
 import { command as reactionrole } from "./commands/moderation/reactionrole.js";
+import { command as poll } from "./commands/moderation/poll.js";
 import { logger } from "./lib/logger.js";
 import type { Command } from "./lib/types.js";
 
@@ -25,7 +26,7 @@ if (!token || !clientId) {
   process.exit(1);
 }
 
-const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp, lock, unlock, announce, joinnumber, reactionrole];
+const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp, lock, unlock, announce, joinnumber, reactionrole, poll];
 const commandData = commands.map((c) => c.data.toJSON());
 
 const rest = new REST().setToken(token);
