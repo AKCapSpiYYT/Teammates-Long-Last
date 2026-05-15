@@ -43,16 +43,24 @@ const MC_PORT = 58338;
 const STATUS_CHANNEL_ID = "1504826233085628497";
 
 interface StatusResult {
-  text: string;
   online: boolean;
+  playerCount?: number;
+  maxPlayers?: number;
+  playerNames?: string[];
 }
 
 async function getLiveStatus(): Promise<StatusResult> {
   try {
     const res = await mcStatus(MC_HOST, MC_PORT, { timeout: 5000 });
-    return { text: `🟢 **Online** | ${res.players.online}/${res.players.max} players`, online: true };
+    const playerNames = res.players?.sample?.map((p: { name: string }) => p.name) ?? [];
+    return {
+      online: true,
+      playerCount: res.players?.online ?? 0,
+      maxPlayers: res.players?.max ?? 0,
+      playerNames,
+    };
   } catch {
-    return { text: "🔴 **Offline**", online: false };
+    return { online: false };
   }
 }
 
@@ -67,14 +75,26 @@ client.once(Events.ClientReady, async (readyClient) => {
     return;
   }
 
-  const buildMessage = (statusText: string) =>
-    `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n${statusText}\n-# Last updated: <t:${Math.floor(Date.now() / 1000)}:R>`;
+  const buildMessage = (result: StatusResult): string => {
+    const timestamp = Math.floor(Date.now() / 1000);
+    if (!result.online) {
+      return `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n🔴 **Offline**\n-# Last updated: <t:${timestamp}:R>`;
+    }
+    const playerLine = `🟢 **Online** | ${result.playerCount}/${result.maxPlayers} players`;
+    const playerList =
+      result.playerNames && result.playerNames.length > 0
+        ? `\n👥 **Playing now:** ${result.playerNames.map((n) => `\`${n}\``).join(", ")}`
+        : result.playerCount! > 0
+        ? `\n👥 **Players online** *(names hidden by server)*`
+        : "";
+    return `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n${playerLine}${playerList}\n-# Last updated: <t:${timestamp}:R>`;
+  };
 
   const initial = await getLiveStatus();
   let wasOnline = initial.online;
 
   let statusMessage = await channel.send({
-    content: `@here\n\n${buildMessage(initial.text)}`,
+    content: `@here\n\n${buildMessage(initial)}`,
     allowedMentions: { parse: ["everyone"] },
   });
   logger.info(`Live MC status message posted in #${channel.name}`);
@@ -93,7 +113,7 @@ client.once(Events.ClientReady, async (readyClient) => {
     wasOnline = result.online;
 
     await statusMessage.delete().catch((err) => logger.error("Failed to delete old status message:", err));
-    statusMessage = await channel.send(buildMessage(result.text))
+    statusMessage = await channel.send(buildMessage(result))
       .catch((err) => { logger.error("Failed to send new status message:", err); return statusMessage; });
   }, 10000);
 });
