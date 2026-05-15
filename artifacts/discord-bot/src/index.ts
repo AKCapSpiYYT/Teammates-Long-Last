@@ -10,6 +10,8 @@ import { command as mcstatus } from "./commands/minecraft/mcstatus.js";
 import { command as unban } from "./commands/moderation/unban.js";
 import { command as slowmode } from "./commands/moderation/slowmode.js";
 import { command as adminhelp } from "./commands/moderation/adminhelp.js";
+import { command as lock } from "./commands/moderation/lock.js";
+import { command as unlock } from "./commands/moderation/unlock.js";
 import { command as ping } from "./commands/prefix/ping.js";
 import { command as help } from "./commands/prefix/help.js";
 import { registerPrefixCommand, handlePrefixMessage } from "./lib/prefixHandler.js";
@@ -33,7 +35,7 @@ const client = new Client({
 
 client.commands = new Collection<string, Command>();
 
-const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp];
+const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp, lock, unlock];
 for (const cmd of commands) {
   client.commands.set(cmd.data.name, cmd);
 }
@@ -119,6 +121,16 @@ client.once(Events.ClientReady, async (readyClient) => {
 
     return [statusEmbed, ...playerEmbeds];
   };
+
+  // Delete any leftover status messages from a previous bot session
+  const recent = await channel.messages.fetch({ limit: 20 }).catch(() => null);
+  if (recent) {
+    const old = recent.filter((m) => m.author.id === readyClient.user.id);
+    for (const msg of old.values()) {
+      await msg.delete().catch(() => null);
+    }
+    if (old.size > 0) logger.info(`Cleaned up ${old.size} old status message(s)`);
+  }
 
   const initial = await getLiveStatus();
   let wasOnline = initial.online;
