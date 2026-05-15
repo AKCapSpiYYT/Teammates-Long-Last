@@ -62,17 +62,20 @@ client.once(Events.ClientReady, async (readyClient) => {
     return;
   }
 
+  const buildMessage = (statusText: string) =>
+    `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n${statusText}\n-# Last updated: <t:${Math.floor(Date.now() / 1000)}:R>`;
+
   const initialStatus = await getLiveStatus();
-  const statusMessage = await channel.send(
-    `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n${initialStatus}\n-# Updates every 10 seconds`
-  );
+  const statusMessage = await channel.send({
+    content: `@here\n\n${buildMessage(initialStatus)}`,
+    allowedMentions: { parse: ["everyone"] },
+  });
   logger.info(`Live MC status message posted in #${channel.name}`);
 
   setInterval(async () => {
     const statusText = await getLiveStatus();
-    await statusMessage.edit(
-      `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n${statusText}\n-# Last updated: <t:${Math.floor(Date.now() / 1000)}:R>`
-    ).catch((err) => logger.error("Failed to update status message:", err));
+    await statusMessage.edit(buildMessage(statusText))
+      .catch((err) => logger.error("Failed to update status message:", err));
   }, 10000);
 });
 
