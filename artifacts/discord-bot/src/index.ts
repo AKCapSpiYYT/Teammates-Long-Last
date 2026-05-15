@@ -60,4 +60,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
+client.on(Events.MessageCreate, async (message) => {
+  if (message.author.bot) return;
+
+  if (message.content === "!ping") {
+    message.reply("pong 🏓");
+  }
+});
+
 client.login(token);
