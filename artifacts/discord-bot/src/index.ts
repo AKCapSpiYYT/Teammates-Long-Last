@@ -1,4 +1,5 @@
-import { Client, GatewayIntentBits, Collection, Events } from "discord.js";
+import { Client, GatewayIntentBits, Collection, Events, TextChannel } from "discord.js";
+import { status as mcStatus } from "minecraft-server-util";
 import { command as ban } from "./commands/moderation/ban.js";
 import { command as kick } from "./commands/moderation/kick.js";
 import { command as timeout } from "./commands/moderation/timeout.js";
@@ -37,10 +38,42 @@ for (const cmd of commands) {
 registerPrefixCommand(ping);
 registerPrefixCommand(help);
 
-client.once(Events.ClientReady, (readyClient) => {
+const MC_HOST = "TeammatesLongLast.aternos.me";
+const MC_PORT = 58338;
+const STATUS_CHANNEL_ID = "1504826233085628497";
+
+async function getLiveStatus(): Promise<string> {
+  try {
+    const res = await mcStatus(MC_HOST, MC_PORT, { timeout: 5000 });
+    return `🟢 **Online** | ${res.players.online}/${res.players.max} players`;
+  } catch {
+    return "🔴 **Offline**";
+  }
+}
+
+client.once(Events.ClientReady, async (readyClient) => {
   logger.info(`Logged in as ${readyClient.user.tag}`);
   logger.info(`Serving ${readyClient.guilds.cache.size} guild(s)`);
   logger.info(`Commands loaded: ${client.commands.map((_, k) => k).join(", ")}`);
+
+  const channel = readyClient.channels.cache.get(STATUS_CHANNEL_ID);
+  if (!(channel instanceof TextChannel)) {
+    logger.warn(`Status channel ${STATUS_CHANNEL_ID} not found or is not a text channel`);
+    return;
+  }
+
+  const initialStatus = await getLiveStatus();
+  const statusMessage = await channel.send(
+    `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n${initialStatus}\n-# Updates every 10 seconds`
+  );
+  logger.info(`Live MC status message posted in #${channel.name}`);
+
+  setInterval(async () => {
+    const statusText = await getLiveStatus();
+    await statusMessage.edit(
+      `**Minecraft Server Status** — \`${MC_HOST}:${MC_PORT}\`\n${statusText}\n-# Last updated: <t:${Math.floor(Date.now() / 1000)}:R>`
+    ).catch((err) => logger.error("Failed to update status message:", err));
+  }, 10000);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
