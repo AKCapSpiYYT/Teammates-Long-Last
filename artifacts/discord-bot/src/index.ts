@@ -13,6 +13,8 @@ import { command as adminhelp } from "./commands/moderation/adminhelp.js";
 import { command as lock } from "./commands/moderation/lock.js";
 import { command as unlock } from "./commands/moderation/unlock.js";
 import { command as announce } from "./commands/moderation/announce.js";
+import { command as joinnumber } from "./commands/moderation/joinnumber.js";
+import { assignJoinRole, getNextJoinNumber } from "./lib/joinRoles.js";
 import { command as ping } from "./commands/prefix/ping.js";
 import { command as help } from "./commands/prefix/help.js";
 import { registerPrefixCommand, handlePrefixMessage } from "./lib/prefixHandler.js";
@@ -36,7 +38,7 @@ const client = new Client({
 
 client.commands = new Collection<string, Command>();
 
-const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp, lock, unlock, announce];
+const commands: Command[] = [ban, kick, timeout, warn, clear, userinfo, mcstatus, unban, slowmode, adminhelp, lock, unlock, announce, joinnumber];
 for (const cmd of commands) {
   client.commands.set(cmd.data.name, cmd);
 }
@@ -183,6 +185,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.reply(message).catch(() => null);
     }
   }
+});
+
+client.on(Events.GuildMemberAdd, async (member) => {
+  if (member.user.bot) return;
+  const number = await getNextJoinNumber(member.guild);
+  await assignJoinRole(member.guild, member, number);
+  logger.info(`Assigned Member #${number} to ${member.user.tag}`);
 });
 
 client.on(Events.MessageCreate, handlePrefixMessage);
