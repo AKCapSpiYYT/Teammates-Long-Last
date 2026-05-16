@@ -22,6 +22,7 @@ import { command as ping } from "./commands/prefix/ping.js";
 import { command as help } from "./commands/prefix/help.js";
 import { registerPrefixCommand, handlePrefixMessage } from "./lib/prefixHandler.js";
 import { logger } from "./lib/logger.js";
+import { startHealthServer } from "./lib/healthServer.js";
 import type { Command } from "./lib/types.js";
 
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -29,6 +30,15 @@ if (!token) {
   logger.error("Missing DISCORD_BOT_TOKEN environment variable");
   process.exit(1);
 }
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled promise rejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  logger.error("Uncaught exception:", err);
+  process.exit(1);
+});
 
 const client = new Client({
   intents: [
@@ -248,4 +258,14 @@ client.on(Events.GuildMemberAdd, async (member) => {
 
 client.on(Events.MessageCreate, handlePrefixMessage);
 
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`Received ${signal} — shutting down gracefully`);
+  client.destroy();
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+startHealthServer();
 client.login(token);
