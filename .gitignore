@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Bot runtime data (regenerated at startup, do not commit)
+artifacts/discord-bot/reaction-roles.json
+artifacts/discord-bot/warn-*.json

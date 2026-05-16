@@ -1,45 +1,59 @@
-# [Project name]
+# TeammatesLongLast Discord Bot
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A Discord bot for the TeammatesLongLast Minecraft server community — moderation commands, live Minecraft server status, reaction roles, join number roles, polls, and announcements.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/discord-bot run dev` — run the bot in watch mode (workflow: "Discord Bot")
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- discord.js v14
+- minecraft-server-util (MC server ping)
+- tsx for dev, tsc for production build
+- Minimal HTTP server for Render health checks
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/discord-bot/src/index.ts` — bot entry point, all event handlers
+- `artifacts/discord-bot/src/commands/` — slash and prefix commands
+- `artifacts/discord-bot/src/lib/` — shared utilities (logger, reaction roles, join roles, health server)
+- `artifacts/discord-bot/src/deploy-commands.ts` — registers slash commands globally with Discord
+- `render.yaml` — Render Blueprint config (repo root, consumed by Render on deploy)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Health check HTTP server** — a tiny Node `http.createServer` binds to `PORT` so Render's web service type can health-check the bot and keep it alive 24/7.
+- **File-based persistence for reaction roles** — `reaction-roles.json` is written locally; on Render this resets on redeploy. Should be migrated to a database if persistence across deploys is needed.
+- **ESM throughout** — `"type": "module"` with `module: NodeNext` / `moduleResolution: NodeNext` for full native ESM.
+- **No monorepo deps at runtime** — `artifacts/discord-bot/package.json` uses pinned versions (no `catalog:` refs) so it can be deployed standalone to Render.
+- **Global slash command registration** — commands are registered globally (not per-guild) via `deploy-commands.ts`.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- 16 slash commands: ban, kick, unban, timeout, warn, clear, lock, unlock, slowmode, userinfo, announce, adminhelp, poll, reactionrole, joinnumber, mcstatus
+- 2 prefix commands: `!ping`, `!help`
+- Live MC status posts to channel `1504826233085628497` every 10 seconds, showing player count and avatar heads
+- Auto join-number role assignment on member join
+- Reaction roles: react to a message to gain/lose a role
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Minecraft server: `TeammatesLongLast.aternos.me:58338`
+- MC status channel ID: `1504826233085628497`
+- Bot deployed to Render as a Web Service using `render.yaml` at repo root
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Run `npm run deploy-commands` (from `artifacts/discord-bot/`) once after first deploy to register slash commands with Discord.
+- `reaction-roles.json` is in `.gitignore` — it is runtime state, not source code.
+- Render's free tier sleeps after inactivity; use UptimeRobot to ping `/health` every 5 min.
+- Do not run `pnpm dev` at workspace root — use the workflow or `--filter`.
 
 ## Pointers
 
+- See `artifacts/discord-bot/README.md` for full feature list and deploy instructions
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
